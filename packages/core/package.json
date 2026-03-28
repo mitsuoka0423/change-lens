@@ -4,6 +4,9 @@
   "private": true,
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "bin": {
+    "change-lens": "dist/bin/change-lens.js"
+  },
   "scripts": {
     "build": "tsc",
     "clean": "rm -rf dist",

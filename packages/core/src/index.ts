@@ -4,3 +4,5 @@ export { OctokitGitHubClient } from "./github/client";
 export { getGitHubToken, AuthError } from "./github/auth";
 export { detectRepo } from "./github/repo-detector";
 export type { RepoInfo } from "./github/repo-detector";
+export { UnifiedDiffParser } from "./diff/parser";
+export { ChangeLensCoreImpl } from "./core";
