@@ -1,0 +1,15 @@
+{
+  "name": "@change-lens/vscode",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@change-lens/core": "*"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  }
+}
