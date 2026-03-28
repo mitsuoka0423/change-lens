@@ -2,8 +2,8 @@
   "name": "@change-lens/core",
   "version": "0.0.1",
   "private": true,
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "dist/src/index.js",
+  "types": "dist/src/index.d.ts",
   "bin": {
     "change-lens": "dist/bin/change-lens.js"
   },
