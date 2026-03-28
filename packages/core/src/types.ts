@@ -4,6 +4,7 @@ export interface PullRequest {
   author: string;
   url: string;
   headSha: string;
+  // QA test: this line was added to verify highlight functionality
 }
 
 export interface LineRange {
