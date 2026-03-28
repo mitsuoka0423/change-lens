@@ -20,12 +20,28 @@
         "command": "changeLens.openPr",
         "title": "Change Lens: Open PR in Browser"
       }
-    ]
+    ],
+    "configuration": {
+      "title": "Change Lens",
+      "properties": {
+        "changeLens.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "ハイライト表示の有効/無効"
+        },
+        "changeLens.currentUser": {
+          "type": "string",
+          "default": "",
+          "description": "自分のGitHubユーザー名（設定すると自分のPRを除外）"
+        }
+      }
+    }
   },
   "scripts": {
-    "build": "tsc",
+    "build": "node esbuild.config.mjs",
+    "build:production": "node esbuild.config.mjs --production",
     "clean": "rm -rf dist",
-    "package": "vsce package --no-dependencies"
+    "package": "npm run build:production && vsce package --no-dependencies"
   },
   "dependencies": {
     "@change-lens/core": "*"
@@ -33,6 +49,7 @@
   "devDependencies": {
     "@types/vscode": "^1.85.0",
     "@vscode/vsce": "^3.0.0",
+    "esbuild": "^0.25.0",
     "typescript": "^5.4.0"
   }
 }

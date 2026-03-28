@@ -1,59 +1,78 @@
 import * as vscode from "vscode";
-import { PRAnnotation } from "@change-lens/core";
+import {
+  OctokitGitHubClient,
+  ChangeLensCoreImpl,
+  detectRepo,
+  AuthError,
+} from "@change-lens/core";
+import type { PRAnnotation } from "@change-lens/core";
 import { applyDecorations, clearDecorations } from "./decorations/decorator";
 import { prChangeDecorationType } from "./decorations/decoration-types";
 import { getSettings } from "./config/settings";
 import { ChangeLensHoverProvider } from "./providers/hover-provider";
 import { registerOpenPrCommand } from "./commands/open-pr";
 
-/**
- * モックデータ: T-03（coreパッケージ）完了までスタブとして使用
- */
-function getMockAnnotations(): PRAnnotation[] {
-  return [
-    {
-      pr: {
-        number: 42,
-        title: "feat: add user authentication",
-        author: "alice",
-        url: "https://github.com/example/repo/pull/42",
-        headSha: "abc1234",
-      },
-      ranges: [
-        { start: 5, end: 10 },
-        { start: 20, end: 25 },
-      ],
-    },
-    {
-      pr: {
-        number: 57,
-        title: "fix: handle edge case in parser",
-        author: "bob",
-        url: "https://github.com/example/repo/pull/57",
-        headSha: "def5678",
-      },
-      ranges: [{ start: 15, end: 18 }],
-    },
-  ];
-}
-
-// TODO: T-03完了後に設定から取得する
-const CURRENT_USER: string | undefined = undefined;
-
+let client: OctokitGitHubClient | undefined;
+let core: ChangeLensCoreImpl | undefined;
 const hoverProvider = new ChangeLensHoverProvider();
 
-function getFilteredAnnotations(): PRAnnotation[] {
-  const all = getMockAnnotations();
-  if (!CURRENT_USER) {
-    return all;
-  }
-  return all.filter((a) => a.pr.author !== CURRENT_USER);
+function getConfig() {
+  const config = vscode.workspace.getConfiguration("changeLens");
+  return {
+    currentUser: config.get<string>("currentUser", ""),
+  };
 }
 
-function updateDecorations(editor: vscode.TextEditor | undefined): void {
-  if (!editor) {
-    return;
+async function fetchAnnotations(
+  filePath: string,
+): Promise<PRAnnotation[]> {
+  if (!core) {
+    try {
+      client = new OctokitGitHubClient();
+      core = new ChangeLensCoreImpl(client);
+    } catch (err) {
+      if (err instanceof AuthError) {
+        vscode.window.showWarningMessage(
+          `Change Lens: ${err.message}`,
+        );
+      }
+      return [];
+    }
   }
+
+  let owner: string;
+  let repo: string;
+  try {
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    const detected = detectRepo(workspaceFolder?.uri.fsPath);
+    owner = detected.owner;
+    repo = detected.repo;
+  } catch {
+    return [];
+  }
+
+  const { currentUser } = getConfig();
+  return core.getAnnotationsForFile(
+    owner,
+    repo,
+    filePath,
+    currentUser || undefined,
+  );
+}
+
+function getRelativePath(editor: vscode.TextEditor): string | undefined {
+  const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+  if (!workspaceFolder) return undefined;
+  const rootPath = workspaceFolder.uri.fsPath;
+  const filePath = editor.document.uri.fsPath;
+  if (!filePath.startsWith(rootPath)) return undefined;
+  return filePath.slice(rootPath.length + 1);
+}
+
+async function updateDecorations(
+  editor: vscode.TextEditor | undefined,
+): Promise<void> {
+  if (!editor) return;
 
   const settings = getSettings();
   if (!settings.enabled) {
@@ -61,23 +80,28 @@ function updateDecorations(editor: vscode.TextEditor | undefined): void {
     return;
   }
 
-  const annotations = getFilteredAnnotations();
-  applyDecorations(editor, annotations);
+  const relativePath = getRelativePath(editor);
+  if (!relativePath) return;
 
-  // HoverProviderにも最新のアノテーションを反映
-  hoverProvider.setAnnotations(getMockAnnotations());
-  hoverProvider.setCurrentUser(CURRENT_USER);
+  try {
+    const annotations = await fetchAnnotations(relativePath);
+    applyDecorations(editor, annotations);
+    hoverProvider.setAnnotations(annotations);
+    const { currentUser } = getConfig();
+    hoverProvider.setCurrentUser(currentUser || undefined);
+  } catch (err) {
+    // API エラー時はサイレントにデコレーションをクリア
+    clearDecorations(editor);
+  }
 }
 
 export function activate(context: vscode.ExtensionContext): void {
-  // アクティブエディタの変更時に再描画
   context.subscriptions.push(
     vscode.window.onDidChangeActiveTextEditor((editor) => {
       updateDecorations(editor);
     }),
   );
 
-  // ドキュメント変更時に再描画
   context.subscriptions.push(
     vscode.workspace.onDidChangeTextDocument((event) => {
       const editor = vscode.window.activeTextEditor;
@@ -87,25 +111,23 @@ export function activate(context: vscode.ExtensionContext): void {
     }),
   );
 
-  // 手動リフレッシュコマンド
   context.subscriptions.push(
     vscode.commands.registerCommand("changeLens.refresh", () => {
+      // リフレッシュ時はキャッシュクリアのためクライアントを再生成
+      client = undefined;
+      core = undefined;
       updateDecorations(vscode.window.activeTextEditor);
     }),
   );
 
-  // PRを開くコマンド
   registerOpenPrCommand(context);
 
-  // HoverProvider登録
   context.subscriptions.push(
     vscode.languages.registerHoverProvider({ scheme: "file" }, hoverProvider),
   );
 
-  // デコレーションタイプのクリーンアップ登録
   context.subscriptions.push(prChangeDecorationType);
 
-  // 初回描画
   updateDecorations(vscode.window.activeTextEditor);
 }
 
