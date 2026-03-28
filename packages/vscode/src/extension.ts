@@ -3,6 +3,8 @@ import { PRAnnotation } from "@change-lens/core";
 import { applyDecorations, clearDecorations } from "./decorations/decorator";
 import { prChangeDecorationType } from "./decorations/decoration-types";
 import { getSettings } from "./config/settings";
+import { ChangeLensHoverProvider } from "./providers/hover-provider";
+import { registerOpenPrCommand } from "./commands/open-pr";
 
 /**
  * モックデータ: T-03（coreパッケージ）完了までスタブとして使用
@@ -35,6 +37,19 @@ function getMockAnnotations(): PRAnnotation[] {
   ];
 }
 
+// TODO: T-03完了後に設定から取得する
+const CURRENT_USER: string | undefined = undefined;
+
+const hoverProvider = new ChangeLensHoverProvider();
+
+function getFilteredAnnotations(): PRAnnotation[] {
+  const all = getMockAnnotations();
+  if (!CURRENT_USER) {
+    return all;
+  }
+  return all.filter((a) => a.pr.author !== CURRENT_USER);
+}
+
 function updateDecorations(editor: vscode.TextEditor | undefined): void {
   if (!editor) {
     return;
@@ -46,9 +61,12 @@ function updateDecorations(editor: vscode.TextEditor | undefined): void {
     return;
   }
 
-  // TODO: T-03完了後にcore.getAnnotationsForFile()に置き換える
-  const annotations = getMockAnnotations();
+  const annotations = getFilteredAnnotations();
   applyDecorations(editor, annotations);
+
+  // HoverProviderにも最新のアノテーションを反映
+  hoverProvider.setAnnotations(getMockAnnotations());
+  hoverProvider.setCurrentUser(CURRENT_USER);
 }
 
 export function activate(context: vscode.ExtensionContext): void {
@@ -74,6 +92,14 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand("changeLens.refresh", () => {
       updateDecorations(vscode.window.activeTextEditor);
     }),
+  );
+
+  // PRを開くコマンド
+  registerOpenPrCommand(context);
+
+  // HoverProvider登録
+  context.subscriptions.push(
+    vscode.languages.registerHoverProvider({ scheme: "file" }, hoverProvider),
   );
 
   // デコレーションタイプのクリーンアップ登録

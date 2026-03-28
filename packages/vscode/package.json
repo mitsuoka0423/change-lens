@@ -15,6 +15,10 @@
       {
         "command": "changeLens.refresh",
         "title": "Change Lens: Refresh Highlights"
+      },
+      {
+        "command": "changeLens.openPr",
+        "title": "Change Lens: Open PR in Browser"
       }
     ]
   },
