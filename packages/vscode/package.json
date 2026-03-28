@@ -1,15 +1,34 @@
 {
-  "name": "@change-lens/vscode",
+  "name": "change-lens",
+  "displayName": "Change Lens",
+  "description": "Highlight lines changed by open pull requests directly in the editor",
   "version": "0.0.1",
-  "private": true,
+  "publisher": "mitsuoka0423",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": ["Other"],
+  "activationEvents": ["onStartupFinished"],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "changeLens.refresh",
+        "title": "Change Lens: Refresh Highlights"
+      }
+    ]
+  },
   "scripts": {
     "build": "tsc",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "package": "vsce package --no-dependencies"
   },
   "dependencies": {
     "@change-lens/core": "*"
   },
   "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^3.0.0",
     "typescript": "^5.4.0"
   }
 }
