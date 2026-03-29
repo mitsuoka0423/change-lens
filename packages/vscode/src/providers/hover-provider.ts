@@ -27,7 +27,13 @@ export class ChangeLensHoverProvider implements vscode.HoverProvider {
 
       for (const range of annotation.ranges) {
         if (line >= range.start && line <= range.end) {
-          return new vscode.Hover(this.buildMarkdown(annotation));
+          const hoverRange = new vscode.Range(
+            position.line,
+            0,
+            position.line,
+            Number.MAX_SAFE_INTEGER,
+          );
+          return new vscode.Hover(this.buildMarkdown(annotation), hoverRange);
         }
       }
     }
