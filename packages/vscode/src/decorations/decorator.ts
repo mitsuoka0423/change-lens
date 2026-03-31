@@ -25,6 +25,12 @@ export function applyDecorations(
         hoverMessage: new vscode.MarkdownString(
           `**PR #${annotation.pr.number}**: ${annotation.pr.title}\n\nby ${annotation.pr.author} — [View PR](${annotation.pr.url})`,
         ),
+        // #12: GitLens風インライン表示（行末にPR情報をテキスト表示）
+        renderOptions: {
+          after: {
+            contentText: `PR #${annotation.pr.number}: ${annotation.pr.title} (${annotation.pr.author})`,
+          },
+        },
       });
     }
   }
